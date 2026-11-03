@@ -148,7 +148,7 @@ def main():
     print(f"Found {len(offers)} offers")
 
     os.makedirs("data/offers", exist_ok=True)
-    with open("data/offers/raw_offers.json", "w") as f:
+    with open("data/offers/raw_offers.json", "w", encoding="utf-8") as f:
         json.dump({"fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                    "search_params": SEARCH_PARAMS, "offers": offers}, f, indent=2, ensure_ascii=False)
     print("Wrote data/offers/raw_offers.json")
