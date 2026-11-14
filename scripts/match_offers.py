@@ -1,4 +1,4 @@
-import csv, json, os, time
+import csv, json, os, time, sys
 
 def load_profile(path="data/profile/my_skills.csv"):
     profile = {}
@@ -71,6 +71,8 @@ def build_output(results, profile):
     }
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")  # Windows terminals may not support offer-title emoji.
     profile = load_profile()
     with open("data/offers/structured_offers.json", encoding="utf-8") as f:
         data = json.load(f)

@@ -1,4 +1,4 @@
-import json, os, time
+import json, os, time, sys
 import requests
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
@@ -39,6 +39,8 @@ def call_ollama(prompt, retries=3, backoff=5):
     raise RuntimeError(f"Ollama unreachable or model not available after {retries} attempts") from last_error
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     # Reads the merged, common-schema file (Step 11c), not raw_offers.json directly
     # -- this script no longer needs to know which source an offer came from, since
     # merge_offer_sources.py already normalized every source to the same field names.
@@ -48,8 +50,16 @@ def main():
     structured = []
     for offer in merged["offers"]:
         print(f"Extracting offer {offer['id']} ({offer['source']}): {offer['title']}...")
-        extracted = call_ollama(PROMPT_TEMPLATE.format(text=offer.get("description", "")))
+        if offer.get("extraction_method") == "cached_previous_extraction":
+            extracted = offer
+            print("  Preserving previous extraction: original description unavailable.")
+        elif offer.get("source") == "td3_sample" and offer.get("extraction_method") == "td3_fixed_vocabulary_v1":
+            extracted = offer
+            print("  TD3: keeping documented fixed-vocabulary extraction (no Ollama call).")
+        else:
+            extracted = call_ollama(PROMPT_TEMPLATE.format(text=offer.get("description", "")))
         structured.append({
+            **{key: offer[key] for key in ("source_site", "source_file", "provenance", "url", "date_posted", "extraction_method", "extraction_note", "description_sha256") if key in offer},
             "id": offer["id"],
             "source": offer["source"],
             "title": offer["title"],

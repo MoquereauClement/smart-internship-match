@@ -4,3 +4,12 @@ data/offers/merged_offers.json
 data/offers/structured_offers.json
 data/offers/matches_all_local.json
 scripts/fetch_offers_jobspy.py
+scripts\__pycache__
+__pycache__/
+*.pyc
+data/applications/
+output/monitoring/
+jobs_sample*.csv
+data/offers/td3_offers.json
+data/offers/*.bak
+jobs_sample(1).csv
