@@ -8,6 +8,7 @@ let dataset = {offers:[]};
 let applications = [];
 const text = (tag, value, cls) => { const el = document.createElement(tag); el.textContent = value; if(cls) el.className = cls; return el; };
 const pct = n => `${Math.round(n * 100)} %`;
+const sourceLabel = source => source==='td3_sample' ? 'Échantillon TD3 (Indeed / LinkedIn)' : source || 'Non renseignée';
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 function validDate(value) { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value; }
 function validateOffers(data) {
@@ -38,10 +39,13 @@ function counts(field) { const c=new Map(); for(const o of dataset.offers) for(c
 function chip(skill,gap=false) { return text('span',skill,`chip${gap?' gap':''}`); }
 function renderDataset() {
   const offers=dataset.offers;
+  const td3Count=offers.filter(o=>o.source==='td3_sample').length;
+  $('source-note').hidden=!td3Count;
+  $('source-note').textContent=td3Count ? `Source de remplacement : ${td3Count} annonces du CSV du TD3 (Indeed / LinkedIn), et non de l’API France Travail. Le jeu contient aussi des emplois hors stage. Les compétences TD3 sont des mentions détectées par vocabulaire fixe, sans IA ; missions, expérience et rémunération n’ont pas été extraites pour ces lignes.` : '';
   const sources=new Map(); for(const o of offers) sources.set(o.source||'Non renseignée',(sources.get(o.source||'Non renseignée')||0)+1);
   const empty=offers.filter(o=>!o.required_skills.length).length;
   kpis('pipeline-kpis',[[offers.length,'offres dans le jeu actif'],[sources.size,'sources représentées'],[empty,'offres sans compétence extraite'],[offers.length?pct(offers.filter(o=>o.coverage>=.3).length/offers.length):'—','offres couvrant au moins 30 %']]);
-  bars('sources',[...sources]);
+  bars('sources',[...sources].map(([s,n])=>[sourceLabel(s),n]));
   $('quality').textContent=`${empty} offre(s) sans compétence extraite. ${offers.filter(o=>o.compensation_mentioned).length} offre(s) avec une rémunération chiffrée extraite. Taux d’erreur IA : non mesuré.`;
   $('freshness').textContent=dataset.generated_at ? `Calcul du matching : ${dataset.generated_at}. Cette date n’est pas la date de publication des annonces.`:'Date de calcul non renseignée.';
   const bins=[['0–19 %',0],['20–39 %',0],['40–59 %',0],['60–79 %',0],['80–100 %',0]];
@@ -49,7 +53,7 @@ function renderDataset() {
   bars('distribution', offers.length?bins:[]); bars('gaps',counts('gaps'),true);
   const strengths=counts('matched'); $('strengths').replaceChildren(...strengths.map(([s,n])=>chip(`${s} · ${n} offre(s)`)));
   if(!strengths.length) $('strengths').append(text('p','Aucune correspondance disponible.','muted'));
-  $('source').replaceChildren(new Option('Toutes les sources',''),...[...sources.keys()].map(s=>new Option(s,s)));
+  $('source').replaceChildren(new Option('Toutes les sources',''),...[...sources.keys()].map(s=>new Option(sourceLabel(s),s)));
   renderOffers();
 }
 function renderOffers() {
@@ -58,11 +62,13 @@ function renderOffers() {
   $('result-count').textContent=`${rows.length} offre(s) affichée(s) sur ${dataset.offers.length}.`;
   $('offers').replaceChildren(...rows.map(o=>{
     const card=text('article','','offer'); const body=text('div','');
-    body.append(text('h3',o.title),text('div',`${o.company||'Entreprise non renseignée'} · ${o.location||'Lieu non renseigné'} · ${o.source||'Source inconnue'}`,'meta'));
+    body.append(text('h3',o.title),text('div',`${o.company||'Entreprise non renseignée'} · ${o.location||'Lieu non renseigné'} · ${sourceLabel(o.source)}${o.source_site ? ` · origine : ${o.source_site}` : ''}`,'meta'));
     const skills=text('div','','chips'); skills.append(...o.matched.map(s=>chip(s)),...o.gaps.map(s=>chip(s,true))); body.append(skills);
     if(!o.required_skills.length) body.append(text('p','Compétences non renseignées : score 0 par absence d’information.','muted'));
     const details=text('details',''); details.append(text('summary','Missions et exigences'));
     details.append(text('p',(o.responsibilities||[]).join('\n')||'Missions non renseignées.'),text('p',`Formation / expérience : ${o.experience_required||'Non renseignée'}`),text('p',`Rémunération : ${o.compensation_mentioned||'Non renseignée'}`));
+    if(o.provenance) details.append(text('p',o.provenance));
+    if(o.extraction_note) details.append(text('p',o.extraction_note));
     if(o.url) { try { const url=new URL(o.url); if(['https:','http:'].includes(url.protocol)) {const a=text('a','Consulter l’annonce ↗'); a.href=url.href; a.target='_blank'; a.rel='noopener noreferrer'; details.append(a);} } catch {} }
     body.append(details);
     const add=text('button','Préremplir une candidature'); add.type='button'; add.onclick=()=>{const f=$('application-form'); f.elements.offer_id.value=o.id;f.elements.company.value=o.company||'';f.elements.title.value=o.title;f.scrollIntoView({behavior:'smooth',block:'center'});f.elements.sent_at.focus();}; body.append(add);
