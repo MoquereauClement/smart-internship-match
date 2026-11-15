@@ -15,6 +15,12 @@ Offre: {title} chez {company}
 Missions: {responsibilities}
 Competences requises correspondantes chez le candidat: {matched_skills}
 Preuves concretes du candidat: {evidence}
+Niveaux declares sur 5: {levels}
+
+Un niveau 1/5 correspond a des notions, 2/5 a des bases, 3/5 a une pratique
+intermediaire. Ne transforme pas ces niveaux en "maitrise" ou expertise.
+Les missions de l'offre ne sont pas des experiences du candidat : ne les lui
+attribue jamais sans preuve explicite. Une competence voisine n'est pas une preuve.
 
 Ne pas hallucinerd'experience professionnelle non mentionnee. Style: direct, concret, pas de
 formules creuses.
@@ -22,9 +28,9 @@ formules creuses.
 
 def load_profile(path="data/profile/my_skills.csv"):
     profile = {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            profile[row["skill"]] = row["evidence"]
+            profile[row["skill"]] = {"evidence": row["evidence"], "level": int(row["level"])}
     return profile
 
 def call_ollama(prompt, retries=3, backoff=5):
@@ -53,7 +59,7 @@ def main():
     # personal, non-publishing use Step 11b's caveat allows; only *publishing* the
     # scraped listing itself is what's restricted, and that restriction is already
     # enforced upstream in match_offers.py, not here.
-    with open("data/offers/matches_all_local.json") as f:
+    with open("data/offers/matches_all_local.json", encoding="utf-8") as f:
         data = json.load(f)
 
     candidates = [o for o in data["offers"] if o["coverage"] >= MIN_COVERAGE][:TOP_N]
@@ -62,17 +68,19 @@ def main():
 
     os.makedirs("output/cv_drafts", exist_ok=True)
     for offer in candidates:
-        evidence = {s: profile[s] for s in offer["matched"] if s in profile}
+        evidence = {s: profile[s]["evidence"] for s in offer["matched"] if s in profile}
+        levels = {s: profile[s]["level"] for s in offer["matched"] if s in profile}
         prompt = PROMPT_TEMPLATE.format(
             title=offer["title"], company=offer["company"] or "cette entreprise",
             responsibilities=", ".join(offer["responsibilities"]),
             matched_skills=", ".join(offer["matched"]),
             evidence=json.dumps(evidence, ensure_ascii=False),
+            levels=json.dumps(levels, ensure_ascii=False),
         )
         print(f"  Drafting for: {offer['title']} @ {offer['company']}...")
         paragraph = call_ollama(prompt)
         out_path = f"output/cv_drafts/offer_{offer['id']}.txt"
-        with open(out_path, "w") as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             f.write(f"Offer: {offer['title']} @ {offer['company']}\n\n{paragraph}\n")
         print(f"    -> {out_path}")
 
