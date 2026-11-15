@@ -57,6 +57,8 @@ Je n'affiche pas de taux d'erreur d'extraction chiffré : la revue limitée de t
 
 Les graphiques résument le jeu actif complet ; les filtres agissent sur la liste. Je peux rechercher un poste ou une compétence, sélectionner une source et fixer une couverture minimale.
 
+Les listes affichent dix offres ou candidatures à la fois, avec un bouton « Voir plus », pour accéder rapidement au suivi en bas de page. Le lancement local charge mes résultats automatiquement ; les données déjà présentes dans le navigateur sont également restaurées à l'ouverture. Les contrôles manuels d'import et d'export ont été retirés de l'interface.
+
 Je conserve la rémunération comme information descriptive plutôt que comme graphique central : seules 5 des 19 offres traitées initialement comportent une rémunération chiffrée extraite. Les 531 lignes TD3 n'ont pas été analysées pour ce champ. Les valeurs absentes ne doivent pas être interprétées comme une absence de rémunération.
 
 ### Résultats de mes candidatures
@@ -68,7 +70,7 @@ Je conserve la rémunération comme information descriptive plutôt que comme gr
 | Candidatures actuellement en entretien ou acceptées, sous forme de carte | Identifier les démarches qui ont progressé | Cet indicateur décrit le statut actuel ; il ne représente pas un historique de tous les entretiens. |
 | Liste des candidatures à relancer | Identifier ma prochaine action | La liste me permet de retrouver les candidatures concernées, au-delà d'un simple total. |
 
-Le suivi ne contient encore aucune candidature. Le taux de réponse reste donc indéfini et s'affiche avec un tiret. Je ne peux pas encore conclure sur l'efficacité de ma recherche. Les relances constituent un indicateur de qualité du suivi, au-delà du seul objectif d'envoyer davantage de candidatures.
+Mon suivi réel ne contient encore aucune candidature. Son taux de réponse reste donc indéfini et s'affiche avec un tiret. J'utilise séparément une candidature fictive pour démontrer le monitoring, sans l'intégrer aux résultats de ma recherche. Les relances constituent un indicateur de qualité du suivi, au-delà du seul objectif d'envoyer davantage de candidatures.
 
 ## 4. Utilisation de l'IA et analyse de ses erreurs — CM5
 
@@ -96,17 +98,29 @@ L'import du fichier local dans le dashboard me permet de consulter mes offres sa
 
 ## 6. Suivi et monitoring — CM4
 
-Mon tableau de suivi contient l'offre, l'entreprise, le poste, la date d'envoi, le statut et la date de première réponse. Je le mets à jour à partir des démarches réellement effectuées.
+Mon tableau de suivi contient l'offre, l'entreprise, le poste, la date d'envoi, le statut et la date de première réponse. Pour vérifier le monitoring, j'ai préparé une candidature fictive associée à une offre de mon jeu local. Elle porte la mention « TEST FICTIF » et reste séparée de mon suivi réel. Aucun envoi de candidature ni retour de recruteur n'a réellement eu lieu dans ce scénario.
 
 J'ai retenu la règle suivante : une candidature envoyée depuis au moins dix jours calendaires, toujours au statut « Envoyée » et sans réponse enregistrée, doit être signalée comme une relance à envisager. Le contrôle ne contacte pas le recruteur : je décide moi-même de la suite à donner.
 
-Le dashboard applique ce contrôle à l'ouverture et après chaque modification. Pour conserver une trace datée, j'exporte le suivi en CSV, puis je lance `monitor_applications.py`. Le script enregistre le résultat dans un historique local et signale également les incohérences de dates, de statuts ou les doublons.
+Le dashboard applique ce contrôle à l'ouverture et après chaque modification. Il sauvegarde automatiquement mon suivi et les 200 derniers contrôles datés dans le stockage du navigateur. Chaque trace indique le déclencheur, le nombre de candidatures, les identifiants à relancer et la présence éventuelle d'une simulation. Je n'ai pas à importer ou exporter de fichier pour utiliser ce suivi.
 
-Deux exécutions techniques ont été réalisées le 14 novembre 2026 :
+Le script `monitor_applications.py` reste un moyen de contrôle séparé à partir d'un CSV local ; il a servi à la démonstration décrite ci-dessous. Il signale également les incohérences de dates, de statuts ou les doublons.
 
-| Exécution, heure de Paris | Candidatures contrôlées | Relances détectées | Erreurs de données |
+### Deux activations sur le scénario de test
+
+Les deux contrôles ont réellement été exécutés le 15 novembre 2026. Entre les deux, l'état de la candidature fictive a été modifié pour vérifier la réaction du monitoring.
+
+| Activation | État simulé | Résultat observé | Action suggérée |
 | --- | --- | --- | --- |
-| 16 h 22 | 0 | 0 | 0 |
-| 16 h 24 | 0 | 0 | 0 |
+| 1 | Une candidature datée fictivement du 4 novembre, au statut « Envoyée », sans réponse | Une alerte après 11 jours sans réponse ; aucune erreur de données | Envisager une relance après vérification de l'annonce et des échanges. |
+| 2 | La même candidature avec une réponse fictive au 15 novembre et le statut « Réponse reçue » | Zéro alerte ; aucune erreur de données | Retirer cette candidature des relances et suivre la réponse. |
 
-Ces deux passages sur un suivi vide vérifient le fonctionnement du contrôle, mais ne permettent pas d'observer l'évolution de ma recherche. Pour compléter l'objectif de monitoring du manuel, je dois le relancer à plusieurs moments du projet avec mes candidatures réelles et consigner ce qu'il aura détecté.
+Le premier contrôle montre que la règle détecte une candidature dépassant le seuil de dix jours. Le second montre que la mise à jour du statut et de la date de réponse supprime l'alerte devenue inutile. Le monitoring adapte donc les actions suggérées à l'état du suivi.
+
+Les deux états du scénario sont conservés sous `data/applications/demo-2026-11-15/` et les résultats datés dans `output/monitoring/demo-2026-11-15/history.jsonl`. Ces fichiers restent locaux.
+
+### Portée des résultats
+
+Pour rendre la démonstration directement visible, le dashboard initialise une candidature générique « TEST FICTIF » lorsque le suivi est vide, sans remplacer de candidatures existantes. Sa date d'envoi simule un délai de onze jours au premier chargement. Un bandeau précise que les indicateurs incluent une simulation. Cette initialisation visuelle est distincte des deux exécutions Python du scénario daté décrites ci-dessus.
+
+Les dates d'envoi et de réponse sont simulées : les deux activations ne représentent pas onze jours d'observation. Cette démonstration vérifie le déclenchement et la disparition d'une alerte, mais ne mesure pas l'efficacité de ma recherche. Mon suivi réel reste vide. Pour compléter le suivi dans le temps demandé par le manuel, je dois appliquer le contrôle à mes candidatures réelles à plusieurs moments du projet et consigner les résultats.

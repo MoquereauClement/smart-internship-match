@@ -1,52 +1,96 @@
-# Smart Internship Match
+﻿# Smart Internship Match
 
-Projet de recherche de stage suivant `TP_1_STUDENT_MANUAL_smart_internship_match.md`.
+Projet suivant `TP_1_STUDENT_MANUAL_smart_internship_match.md`.
 
-## Consulter le dashboard
+## Démarrage rapide
+
+Prérequis : Python 3 installé. Le serveur du dashboard utilise uniquement la
+bibliothèque standard de Python ; Ollama et une clé API ne sont pas nécessaires
+pour consulter les résultats déjà générés.
+
+1. Ouvrir un terminal PowerShell dans le dossier `smart-internship-match`.
+2. Lancer le serveur :
 
 ```powershell
-python -m http.server 8000 --directory docs
+python scripts/serve_dashboard.py
 ```
 
-Ouvrir <http://localhost:8000/dashboard.html>. Sur GitHub Pages, ajouter
-`/dashboard.html` à l'adresse du site ou suivre le lien de la page d'accueil.
-`docs/index.html` conserve la vérification JSON demandée à l'étape 15.
+3. Ouvrir **<http://127.0.0.1:8000/dashboard.html>** dans le navigateur.
+4. Garder le terminal ouvert pendant la consultation. Pour arrêter le serveur,
+   appuyer sur **Ctrl+C** dans ce terminal.
 
-Le jeu public vient de `docs/data/matches.json`. Il ne contient actuellement aucune
-offre publiable. Pour explorer les offres privées, utiliser
-« Explorer mes offres locales » et sélectionner
-`data/offers/matches_all_local.json`. L'import est lu dans le navigateur, sans
-envoi au serveur. Ne pas copier ce fichier dans `docs/`.
+Si la commande `python` n'est pas reconnue sous Windows, utiliser
+`py scripts/serve_dashboard.py`.
 
-### Remplacement de l'API par le CSV du TD3
+Le dashboard charge automatiquement les offres disponibles, restaure le suivi
+et affiche dix résultats à la fois avec « Voir plus ». Aucun fichier à sélectionner.
 
-L'API France Travail ne fonctionne pas dans cette réalisation (constat signalé
-par le candidat). Le fichier fourni `jobs_sample(1).csv` sert de remplacement
-technique. Il contient 531 annonces : 431 Indeed et 100 LinkedIn, y compris des
-emplois hors stage. Ce ne sont pas des données France Travail ni une preuve que
-l'acquisition API fonctionne. Les 19 offres déjà extraites restent conservées à côté.
+### Si les offres ne s'affichent pas
+
+Vérifier la présence de `data/offers/matches_all_local.json`. S'il manque, placer
+le CSV du TD3 `jobs_sample(1).csv` à la racine du projet et générer les résultats :
 
 ```powershell
 python scripts/import_td3.py --input "jobs_sample(1).csv"
 python scripts/match_offers.py
 ```
 
-L'import crée `data/offers/td3_offers.json`, met à jour les fichiers fusionné et
-structuré sans supprimer les autres sources, puis le matching produit le fichier
-local à réimporter dans le dashboard. Un nouvel import remplace la source TD3
-sans la dupliquer. Le fichier brut et ses sorties restent ignorés par Git.
+Recharger ensuite la page. Le CSV et les résultats privés ne sont pas inclus
+dans le dépôt : une nouvelle copie du projet doit disposer du CSV localement.
 
-Ollama n'étant pas joignable lors de cette intégration, les compétences TD3 sont
-des mentions détectées dans les descriptions par un vocabulaire fixe documenté
-dans `scripts/import_td3.py`. Missions, expérience et rémunération restent vides.
-Il ne s'agit pas d'une extraction IA, et une technologie citée n'est pas forcément
-exigée du candidat. La provenance et la méthode sont affichées dans le dashboard.
-Ces annonces restent non publiables comme les autres annonces JobSpy.
+Si le port 8000 est occupé, lancer `python scripts/serve_dashboard.py --port 8001`
+et ouvrir <http://127.0.0.1:8001/dashboard.html>.
 
-Les filtres affectent la liste d'offres ; les graphiques résument le jeu actif complet.
-Le taux d'erreur IA est indiqué comme non mesuré, car il nécessite un audit humain.
+Utiliser ce serveur dédié pour charger les données locales : ouvrir le HTML
+directement ou lancer `python -m http.server` ne fournit pas le point d'accès
+privé nécessaire au chargement automatique.
 
-## Pipeline des étapes précédentes
+## Fonctionnement du dashboard
+
+Ce serveur local charge directement
+`data/offers/matches_all_local.json`, sans copier ce fichier dans le site public.
+Les offres sont aussi conservées dans le navigateur pour les ouvertures suivantes.
+Les listes montrent dix éléments, puis proposent « Voir plus ».
+
+Le suivi est sauvegardé automatiquement dans le navigateur. Une candidature
+« TEST FICTIF » apparaît au premier lancement si le suivi est vide ; elle simule
+un envoi onze jours plus tôt. Elle ne remplace pas des candidatures existantes et
+ne revient pas après suppression. Un bandeau signale les indicateurs de simulation.
+
+Les relances sont calculées automatiquement à l'ouverture et après chaque
+modification. Les 200 derniers contrôles sont conservés dans le navigateur, avec
+leur date, leur déclencheur et les alertes. Aucun import ou export manuel n'est
+nécessaire. Le stockage reste propre au navigateur et à l'adresse du site.
+
+GitHub Pages sert uniquement `docs/data/matches.json`, actuellement vide. Il ne
+peut pas lire les fichiers privés de l'ordinateur : pour charger les 550 lignes
+locales automatiquement, utiliser le serveur ci-dessus. La page `docs/index.html`
+conserve la vérification JSON demandée dans le manuel.
+
+## Source de remplacement TD3
+
+L'authentification France Travail échoue avec `invalid_client` dans le journal
+fourni. Le fichier `jobs_sample(1).csv` du TD3 sert de remplacement technique :
+531 annonces, dont 431 Indeed et 100 LinkedIn, y compris des emplois hors stage.
+Elles ne sont pas présentées comme issues de France Travail.
+
+```powershell
+python scripts/import_td3.py --input "jobs_sample(1).csv"
+python scripts/match_offers.py
+```
+
+Le jeu combiné compte 550 lignes avec les 19 offres précédemment extraites. La
+provenance TD3 et les plateformes restent affichées. Les compétences des lignes
+TD3 sont des mentions détectées par vocabulaire fixe, sans appel Ollama ; missions,
+expérience et rémunération ne sont pas extraites pour ces lignes. Le fichier CSV
+et les offres privées restent ignorés par Git. Un nouvel import remplace les
+lignes TD3 sans les dupliquer.
+
+Les extractions des 19 annonces initiales restent disponibles, mais leurs textes
+bruts ne sont plus disponibles dans la fusion après une erreur d'intégration.
+Des sauvegardes précèdent désormais les réécritures des fichiers fusionné et structuré.
+
+## Pipeline France Travail et Ollama
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -57,53 +101,23 @@ python scripts/match_offers.py
 python scripts/draft_cv.py
 ```
 
-La collecte exige `FRANCETRAVAIL_CLIENT_ID` et `FRANCETRAVAIL_CLIENT_SECRET` dans
-l'environnement, ou les Secrets du workflow fourni. Ne jamais les écrire dans le
-dépôt. L'extraction et la rédaction exigent Ollama et `qwen3:8b` en local.
-Sans fichier France Travail, la fusion utilise l'import TD3 s'il est disponible.
-L'extraction conserve la méthode déclarée des lignes TD3 ; les autres offres
-nécessitent toujours Ollama si leur extraction est relancée.
-Relire les brouillons avant utilisation ; le prompt transmet désormais les niveaux
-pour limiter les exagérations, ce qui ne garantit pas leur absence.
+La collecte exige les variables `FRANCETRAVAIL_CLIENT_ID` et
+`FRANCETRAVAIL_CLIENT_SECRET`, ou les Secrets du workflow GitHub. L'extraction IA et
+la rédaction exigent Ollama et `qwen3:8b`. Les lignes TD3 conservent leur méthode
+par vocabulaire fixe ; la fusion peut utiliser cette source sans fichier API.
+Les brouillons doivent être relus avant utilisation.
 
-## Suivre les candidatures (étapes 15 et 16)
+## Monitoring Python et rapport
 
-1. Saisir uniquement les candidatures réellement envoyées dans le dashboard.
-2. Mettre à jour le statut et la date de première réponse ensemble, puis cliquer
-   « Enregistrer ». Un refus est une réponse ; une candidature retirée sans retour ne l'est pas.
-3. Exporter régulièrement le suivi JSON. Le navigateur conserve ses propres données
-   par origine : localhost et GitHub Pages ont des suivis distincts.
-4. Pour le contrôle Python, exporter le CSV et l'enregistrer sous
-   `data/applications/applications.csv`. Remplacer le CSV après chaque nouvelle exportation.
+Le contrôle CSV reste utilisable séparément du monitoring automatique du navigateur :
 
 ```powershell
 python scripts/monitor_applications.py --init
 python scripts/monitor_applications.py
 ```
 
-`--init` crée un suivi vide seulement si le fichier n'existe pas. Il ne crée aucune
-candidature. Chaque contrôle ajoute une ligne dans `output/monitoring/history.jsonl`
-et actualise `latest.json`. Une candidature « Envoyée » sans réponse depuis au moins
-10 jours calendaires déclenche une relance ; les incohérences de dates ou de statut
-sont signalées et produisent un code de sortie 1. Les journées sont calculées en
-Europe/Paris. Le dashboard contrôle aussi ces relances à l'ouverture et à chaque
-modification. Le contrôle Python est lancé manuellement après l'export du CSV.
-
-Lancer le contrôle à plusieurs moments du projet et commenter ses résultats dans
-le rapport. Deux passages techniques consécutifs sur un suivi vide ne permettent
-pas de conclure à l'efficacité de la recherche.
-
-## Vérifications et livrables
-
-```powershell
-python -B -m unittest discover -s tests -v
-node --check docs/dashboard.js
-node tests/dashboard.test.cjs
-```
-
-Les tests utilisent des cas synthétiques séparés des candidatures personnelles.
-Le rapport de travail est dans [RAPPORT.md](RAPPORT.md) ; les éléments nécessitant
-une validation personnelle y sont explicités. Les données de candidature, brouillons
-et historiques de monitoring restent ignorés par Git. Le brief d'évaluation
-`project1_internship_job_search.md` et le guide de choix des graphiques référencés
-par le manuel ne sont pas présents : vérifier le rendu contre ces documents avant remise.
+Il lit `data/applications/applications.csv` et conserve ses traces sous
+`output/monitoring/`. La démonstration fictive du 15 novembre possède deux états
+CSV séparés sous `data/applications/demo-2026-11-15/`, avec un historique distinct
+sous `output/monitoring/demo-2026-11-15/`. Ces traces de test ne sont pas des
+résultats de candidatures réelles. Le rapport figure dans [RAPPORT.md](RAPPORT.md).

@@ -35,13 +35,27 @@ async function main() {
   await new Promise(resolve=>setImmediate(resolve));
   assert.match(getNode('message').textContent,/Données publiques/);
   assert.equal(getNode('offers').children.length,1); // informative empty state
+  assert.equal(run('applications[0].id'),'DEMO-MONITOR');
+  assert.equal(getNode('alerts').children[0].className,'alert');
+  assert.equal(getNode('demo-note').hidden,false);
+  assert.equal(JSON.parse(storage.get('sim-monitor-history-v1')).at(-1).alerts.length,1);
+  run('saveTracker(applications.map(a=>({...a,status:"response",response_at:today()})))');
+  assert.equal(JSON.parse(storage.get('sim-monitor-history-v1')).at(-1).alerts.length,0);
   const localPath=path.join(root,'data/offers/matches_all_local.json');
   const local=fs.existsSync(localPath)?JSON.parse(fs.readFileSync(localPath,'utf8')):{offers:[{id:'test',title:'Synthetic',source:'test',score:.4,coverage:1,required_skills:['Python'],matched:['Python'],gaps:[],publishable:false}]};
-  getNode('offers-file').files=[{size:1000,text:async()=>JSON.stringify(local)}];
-  await getNode('offers-file').onchange();
-  assert.equal(getNode('offers').children.length,local.offers.length);
+  context.location={hostname:'127.0.0.1'};
+  context.fetch=async url=>{calls.push(url);return {ok:true,json:async()=>local};};
+  await run('loadInitialOffers()');
+  assert.equal(getNode('offers').children.length,Math.min(10,local.offers.length));
+  getNode('more-offers').onclick();
+  assert.equal(getNode('offers').children.length,Math.min(20,local.offers.length));
   assert.match(getNode('message').textContent,/Mode local privé/);
-  assert.deepEqual(calls,['data/matches.json']); // import has no network write
+  assert.deepEqual(calls,['data/matches.json','/local-data/matches.json']);
+  delete context.location;
+  await run('loadInitialOffers()');
+  assert.match(getNode('message').textContent,/restaurées/);
+  assert.equal(getNode('offers').children.length,Math.min(10,local.offers.length));
+  assert.deepEqual(calls,['data/matches.json','/local-data/matches.json']); // cache needs no file selection or network write
   getNode('search').value='no-such-title-0a1b2c';run('renderOffers()');
   assert.equal(getNode('offers').children[0].className,'empty');
   getNode('search').value='';
@@ -49,12 +63,21 @@ async function main() {
   assert.equal(run('validDate("2026-02-30")'),false);
   assert.equal(run('validDate("2026-02-28")'),true);
   assert.equal(run('saveTracker([{id:"t",offer_id:"x",company:"<script>bad()</script>",title:"Test",sent_at:today(),status:"sent",response_at:""}])'),true);
-  assert.equal(storage.size,1);
+  assert.ok(storage.has('sim-applications-v1'));
   assert.equal(getNode('applications').children[0].children[0].textContent,'<script>bad()</script>');
   assert.equal(run('saveTracker([{id:"t",offer_id:"x",company:"Test",title:"Test",sent_at:today(),status:"response",response_at:""}])'),false);
   assert.equal(run('applications[0].status'),'sent'); // failed save preserves tracker
   assert.equal(run('saveTracker([])'),true);
   assert.equal(getNode('outcome-kpis').children[1].children[0].textContent,'—');
-  console.log('Dashboard checks passed: public empty state, private import, filters, malformed data, safe text, tracker consistency and persistence.');
+  run('saveTracker(Array.from({length:11},(_,i)=>({id:"t"+i,offer_id:"x",company:"Test",title:"Test",sent_at:today(),status:"sent",response_at:""})))');
+  assert.equal(getNode('applications').children.length,10);
+  assert.equal(getNode('more-applications').hidden,false);
+  getNode('more-applications').onclick();
+  assert.equal(getNode('applications').children.length,11);
+  assert.equal(getNode('more-applications').hidden,true);
+  const html=fs.readFileSync(path.join(root,'docs/dashboard.html'),'utf8');
+  assert.ok(!html.includes('type="file"'));
+  for(const removed of ['offers-file','tracker-file','export-tracker','export-csv','public-data']) assert.ok(!html.includes(`id="${removed}"`));
+  console.log('Dashboard checks passed: automatic local loading, cache restoration, demo initialization, pagination, validation and tracker persistence.');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
